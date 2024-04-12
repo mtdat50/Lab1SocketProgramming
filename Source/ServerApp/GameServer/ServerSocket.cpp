@@ -1,10 +1,11 @@
-#include "ServerSocket.h"
+#include "../include/ServerSocket.h"
 
 ServerSocket::ServerSocket() {
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) {
         // Initialize Winsock
-        if (WSAStartup(MAKEWORD(2, 2), nullptr) != 0) { 
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) { 
             std::cout << "ServerSocket: Failed to initialize Winsock.\n";
             return;
         }
@@ -48,12 +49,8 @@ void ServerSocket::socketListen(int maxClients) {
 SOCKET ServerSocket::acceptConnection() {
     // Accept a connection from a client
     SOCKET clientSocket = accept(sock, nullptr, nullptr);
-    if (clientSocket == INVALID_SOCKET)
-        std::cout << "ServerSocket: Failed to accept connection.\n";
-    else {
-        clientList.push_back(clientSocket);
+    if (clientSocket != INVALID_SOCKET)
         std::cout << "ServerSocket: Connection accepted.\n";
-    }
 
     return clientSocket;
 }
@@ -64,10 +61,17 @@ bool ServerSocket::isFull() {
 
 
 int ServerSocket::receiveData(SOCKET client, char *buf) {
-    return recv(client, buf, sizeof buf, 0);
+    int dataSize = recv(client, buf, 11, 0);
+    if (dataSize <= 0) return dataSize;
+
+    while (buf[dataSize - 1] != '\n')
+        dataSize += recv(client, &buf[dataSize], 1, 0);
+
+    return dataSize;
 }
 
 
 void ServerSocket::sendData(SOCKET client, char *buf, int dataSize) {
+    buf[dataSize++] = '\n';
     send(client, buf, dataSize, 0);
 }

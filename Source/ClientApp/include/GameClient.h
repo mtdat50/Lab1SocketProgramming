@@ -1,4 +1,9 @@
-#include "ClientSocket.h"
+#pragma once
+#include <string>
+#include <vector>
+#include <chrono>
+#include <thread>
+#include "../include/Data.h"
 
 class player {
     private:
@@ -22,7 +27,16 @@ class player {
 
 class GameClient {
     private:
-        ClientSocket clientSock;
+        player myPlayer;
+        int nPlayerWaiting, maxPlayers;
+        std::vector< player > playerList;
+        uint64_t questionID;
+
+
     public:
         GameClient();
+        int playerRegistration(std::string playerName);
+        std::pair< int, int> waitForServerStarting();
+        bool question();
+        void playerAnswer();
 };

@@ -1,15 +1,15 @@
 #include <winsock2.h>
 #include <iostream>
-#include "GameServer/GameServer.h"
-#include "GameServer/Data.h"
+#include "include/GameServer.h"
+#include "include/Data.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
 
 int main() {
+    int playersPerGame = 1;
     int maxClients = 10;    
-    int playersPerGame = 5;
-    GameServer myGame(maxClients, playersPerGame);
+    GameServer myGame(playersPerGame, maxClients);
     
 
 
@@ -18,6 +18,7 @@ int main() {
     int trackLength;
     std::cout << "Enter track length: ";
     std::cin >> trackLength;
+    // trackLength = 5;
     
     myGame.start(trackLength);
     while (!myGame.checkForWinner()) {

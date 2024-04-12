@@ -1,4 +1,4 @@
-#include "ClientSocket.h"
+#include "../include/ClientSocket.h"
 
 
 
@@ -7,7 +7,8 @@ ClientSocket::ClientSocket() {
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) {
         // Initialize Winsock
-        if (WSAStartup(MAKEWORD(2, 2), nullptr) != 0) { 
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) { 
             std::cout << "ClientSocket: Failed to initialize Winsock.\n";
             return;
         }
@@ -29,7 +30,7 @@ ClientSocket::~ClientSocket() {
     WSACleanup();
 }
 
-void ClientSocket::connectToServer() {
+bool ClientSocket::connectToServer() {
     // Set up the server address structure
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
@@ -37,14 +38,41 @@ void ClientSocket::connectToServer() {
     serverAddr.sin_port = htons(PORTNUM);
 
     // Connect to the server
-    if (connect(sock, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0)
-        printf("Failed to connect to server.\n");
+    connect(sock, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+
+    // Check if success
+    fd_set writefds;
+    FD_ZERO(&writefds);
+    FD_SET(sock, &writefds);
+    struct timeval tv;
+    tv.tv_sec = 1;  // Timeout after 1 seconds
+    tv.tv_usec = 0;
+    int result = select(0, NULL, &writefds, NULL, &tv);
+    if (result > 0 && FD_ISSET(sock, &writefds)) {
+        int error;
+        int len = sizeof(error);
+        getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&error, &len);
+        if (error == 0) {
+            std::cout << "ClientSocket: Connected to server successfully.\n";
+            return true;
+        }
+    }
+
+    return false;
 }
 
 int ClientSocket::receiveData(char *buf) {
-    return recv(sock, buf, sizeof buf, 0);
+    int dataSize = recv(sock, buf, 1, 0);
+    if (dataSize <= 0) return dataSize;
+
+    while (buf[dataSize - 1] != '\n')
+        dataSize += recv(sock, &buf[dataSize], 1, 0);
+
+    // std::cout << "receiveData: dataSize " << dataSize << '\n';
+    return dataSize;
 }
 
 void ClientSocket::sendData(char *buf, int dataSize) {
+    buf[dataSize++] = '\n';
     send(sock, buf, dataSize, 0);
 }

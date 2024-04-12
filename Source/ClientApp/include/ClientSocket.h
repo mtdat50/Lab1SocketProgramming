@@ -1,4 +1,5 @@
 #pragma once
+#define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <iostream>
 #include <vector>
@@ -11,7 +12,7 @@ class ClientSocket {
         SOCKET sock;
     public:
         ClientSocket();
-        void connectToServer();
+        bool connectToServer();
         int receiveData(char *buf);
         void sendData(char *buf, int dataSize);
         ~ClientSocket();

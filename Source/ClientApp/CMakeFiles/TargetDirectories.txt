@@ -1,0 +1,3 @@
+D:/Code/apcs/CS494InternetworkingProtocols/Lab1SocketProgramming/Source/ClientApp/CMakeFiles/ClientApp.dir
+D:/Code/apcs/CS494InternetworkingProtocols/Lab1SocketProgramming/Source/ClientApp/CMakeFiles/edit_cache.dir
+D:/Code/apcs/CS494InternetworkingProtocols/Lab1SocketProgramming/Source/ClientApp/CMakeFiles/rebuild_cache.dir

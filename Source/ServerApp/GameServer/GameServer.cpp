@@ -1,4 +1,4 @@
-#include "GameServer.h"
+#include "../include/GameServer.h"
 
 
 
@@ -57,24 +57,27 @@ bool GameServer::isFull() {
 
 bool GameServer::playerRegistration(std::string playerName, SOCKET playerSock) {
     // check name duplication
-    for (player p: playerList)
-        if (p.getName() == playerName)
+    for (player p: playerList) {
+        if (p.getName() == playerName) 
             return false;
+    }
     
     playerList.push_back(player(playerList.size(), playerName, playerSock));
+    std::cout << "player count: " << playerList.size() << '\n';
     return true;
 }
 
 void GameServer::waitForPlayers() {
     std::vector< SOCKET > clientList;
-    while (isFull()) {
+    while (!isFull()) {
         // check for connection request
         SOCKET clientSoc = serverSock.acceptConnection();
-        clientList.push_back(clientSoc);
+        if (clientSoc != INVALID_SOCKET)
+            clientList.push_back(clientSoc);
         
         // check for player registration from clients
         for (SOCKET client: clientList) {
-            char buf[64];
+            char buf[128];
             int dataSize = serverSock.receiveData(client, buf);
             if (dataSize <= 0) 
                 continue;
@@ -84,15 +87,34 @@ void GameServer::waitForPlayers() {
                 continue;
 
             // server reply to client
-            if (playerRegistration(action.playerName, client)) 
+            if (playerRegistration(action.playerName, client)) {
+                std::cout << "New player registration: " << action.playerName << '\n';
+
                 action.actionType = GAMESERVER_ACCEPT_REGISTRATION;
+                action.playerID = playerList.size();
+            }
             else // playername is used
                 action.actionType = GAMESERVER_PLAYERNAME_DUPLICATED;
             dataSize = action2Data(action, buf);
             serverSock.sendData(client, buf, dataSize);
 
-            if (isFull()) break;
+            if (isFull())
+                break;
         }
+
+        // inform registered players about the current number of players
+        char buf[128];
+        ACTION action;
+        action.actionType = GAMESERVER_PLAYERS_COUNT;
+        action.playersPerGame = playersPerGame;
+        action.nPlayers = playerList.size();
+        int dataSize = action2Data(action, buf);
+        for (player p: playerList) {
+            // std::cout << "send numper of players: " << action.nPlayers << '/' << action.playersPerGame << '\n';
+            serverSock.sendData(p.getSocket(), buf, dataSize);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     std::cout << "All players have registered.\n";
@@ -102,10 +124,14 @@ void GameServer::start(int _trackLength) {
     trackLength = _trackLength;
 
     // announce to players
-    char buf[64];
+    char buf[128];
     ACTION action;
     action.actionType = GAMESERVER_ANNOUNCE_STARTING;
     action.trackLength = trackLength;
+
+    for (player p: playerList)
+        action.nameList.push_back(p.getName());
+
     int dataSize = action2Data(action, buf);
 
     for (player p: playerList)
@@ -138,11 +164,13 @@ void GameServer::startQuestion() {
     action._operator = generateRandomInt(0, 3);
     
     // send question
-    char buf[64];
+    char buf[128];
     int dataSize = action2Data(action, buf);
     for (player p: playerList)
         serverSock.sendData(p.getSocket(), buf, dataSize);
-
+    
+    char op[] = "+-*/";
+    std::cout << "Question: " << action.questionID << ' ' << action.operand1 << ' ' << op[action._operator] << ' ' << action.operand2 << '\n';
 
     switch (action._operator) {
         case 0:
@@ -174,10 +202,11 @@ void GameServer::receiveAndProcessAnswers() {
     int wrongAnswerCnt = 0;
     int firstCorrect = -1;
     while (timeCounting < TIMELIMIT) {
+        // std::cout << "time: " << timeCounting << ' ' << TIMELIMIT << '\n';
         for (player p: playerList) {
             if (p.isDisqualified()) continue;
 
-            char buf[64];
+            char buf[128];
             int dataSize = serverSock.receiveData(p.getSocket(), buf);
             if (dataSize <= 0) 
                 continue;
@@ -185,6 +214,9 @@ void GameServer::receiveAndProcessAnswers() {
             ACTION action = data2Action(buf, dataSize);
             if (action.actionType != PLAYER_ANSWER || action.questionID != currentQuestionID)
                 continue;
+
+            
+            std::cout << "GameServer::receiveAndProcessAnswers: " << p.getName() << ' ' << action.answer << '\n';
 
             // check the answer
             if (std::abs(correctAnswer - action.answer) < 1e6) {
@@ -220,7 +252,7 @@ void GameServer::receiveAndProcessAnswers() {
 
 
     // announce result to players
-    char buf[64];
+    char buf[128];
     ACTION action;
     action.actionType = GAMESERVER_ANNOUNCE_RESULT;
     action.correctAnswer = correctAnswer;

@@ -1,14 +1,17 @@
 #pragma once
 #include <string>
+#include <string.h>
 #include <vector>
 
 
 enum ACTIONTYPE {
+    ERROR_ACTION,
     PLAYER_REGISTRATION,
     PLAYER_ANSWER,
     GAMESERVER_ACCEPT_REGISTRATION,
     GAMESERVER_REJECT_REGISTRATION,
     GAMESERVER_PLAYERNAME_DUPLICATED,
+    GAMESERVER_PLAYERS_COUNT,
     GAMESERVER_ANNOUNCE_STARTING,
     GAMESERVER_QUESTION,
     GAMESERVER_ANNOUNCE_RESULT,
@@ -16,8 +19,13 @@ enum ACTIONTYPE {
 
 struct ACTION {
     ACTIONTYPE actionType;
+    int playersPerGame, nPlayers;
+
     int trackLength;
+    std::vector< std::string > nameList;
+
     std::string playerName;
+    int playerID;
 
     uint64_t questionID;
     int operand1, operand2, _operator; // + - * /
